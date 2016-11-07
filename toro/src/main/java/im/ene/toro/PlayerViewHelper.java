@@ -16,6 +16,8 @@
 
 package im.ene.toro;
 
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -28,12 +30,14 @@ import android.view.ViewParent;
  *
  * A helper class to support Video's callbacks from {@link RecyclerView.Adapter}
  */
-public abstract class PlayerViewHelper {
+public abstract class PlayerViewHelper implements Handler.Callback {
 
-  @SuppressWarnings("unused") static final String TAG = "PlayerViewHelper";
+  @SuppressWarnings("unused") static final String TAG = "TORO:Helper";
 
   protected final ToroPlayer player;
   protected final View itemView;
+
+  private Handler playerHandler;
 
   public PlayerViewHelper(@NonNull ToroPlayer player, @NonNull View itemView) {
     this.player = player;
@@ -46,36 +50,48 @@ public abstract class PlayerViewHelper {
    * Callback from {@link RecyclerView.Adapter#onViewAttachedToWindow(RecyclerView.ViewHolder)}
    */
   @CallSuper public void onAttachedToWindow() {
-    player.preparePlayer(false);
-    ToroScrollListener listener = itemView.getParent() != null ?  //
-        Toro.sInstance.mListeners.get(itemView.getParent().hashCode()) : null;
-    if (listener != null && listener.getManager().getPlayer() == null) {
-      if (player.wantsToPlay() && Toro.getStrategy().allowsToPlay(player, itemView.getParent())) {
-        listener.getManager().setPlayer(player);
-        listener.getManager().restoreVideoState(player.getMediaId());
-        listener.getManager().startPlayback();
-      }
+    if (playerHandler == null) {
+      playerHandler = new Handler(this);
     }
+
+    playerHandler.removeCallbacksAndMessages(null);
+    playerHandler.sendEmptyMessageDelayed(MSG_ATTACHED, MSG_DELAY);
+
+    //player.preparePlayer(false);
+    //ToroScrollListener listener = itemView.getParent() != null ?  //
+    //    Toro.sInstance.mListeners.get(itemView.getParent().hashCode()) : null;
+    //if (listener != null && listener.getManager().getPlayer() == null) {
+    //  if (player.wantsToPlay() && Toro.getStrategy().allowsToPlay(player, itemView.getParent())) {
+    //    listener.getManager().setPlayer(player);
+    //    listener.getManager().restoreVideoState(player.getMediaId());
+    //    listener.getManager().startPlayback();
+    //  }
+    //}
   }
 
   /**
    * Callback from {@link RecyclerView.Adapter#onViewDetachedFromWindow(RecyclerView.ViewHolder)}
    */
   @CallSuper public void onDetachedFromWindow() {
-    ToroScrollListener listener = itemView.getParent() != null ?  //
-        Toro.sInstance.mListeners.get(itemView.getParent().hashCode()) : null;
-    // Manually save Video state
-    if (listener != null && player.equals(listener.getManager().getPlayer())) {
-      if (player.isPlaying()) {
-        listener.getManager().saveVideoState( //
-            player.getMediaId(), player.getCurrentPosition(), player.getDuration());
-        listener.getManager().pausePlayback();
-      }
-      // Detach current Player
-      listener.getManager().setPlayer(null);
+    if (playerHandler != null) {
+      playerHandler.removeCallbacksAndMessages(null);
+      playerHandler.sendEmptyMessage(MSG_DETACHED); // send the message immediately
     }
-    // Release player.
-    player.releasePlayer();
+
+    //ToroScrollListener listener = itemView.getParent() != null ?  //
+    //    Toro.sInstance.mListeners.get(itemView.getParent().hashCode()) : null;
+    //// Manually save Video state
+    //if (listener != null && player.equals(listener.getManager().getPlayer())) {
+    //  if (player.isPlaying()) {
+    //    listener.getManager().saveVideoState( //
+    //        player.getMediaId(), player.getCurrentPosition(), player.getDuration());
+    //    listener.getManager().pausePlayback();
+    //  }
+    //  // Detach current Player
+    //  listener.getManager().setPlayer(null);
+    //}
+    //// Release player.
+    //player.releasePlayer();
   }
 
   /* BEGIN: Callback for BaseMediaPlayer */
@@ -104,5 +120,54 @@ public abstract class PlayerViewHelper {
   protected final boolean onPlaybackError(Exception error) {
     return this.player.onPlaybackError(error) &&  //
         Toro.sInstance.onPlaybackError(this.player, error);
+  }
+
+  private static final int MSG_ATTACHED = 1;
+
+  private static final int MSG_DETACHED = 2;
+
+  private static final int MSG_DELAY = 150;
+
+  @Override public boolean handleMessage(Message msg) {
+    boolean handled;
+    ToroScrollListener listener;
+    switch (msg.what) {
+      case MSG_ATTACHED:
+        player.preparePlayer(false);
+        listener = itemView.getParent() != null ?  //
+            Toro.sInstance.mListeners.get(itemView.getParent().hashCode()) : null;
+        if (listener != null && listener.getManager().getPlayer() == null) {
+          if (player.wantsToPlay() && Toro.getStrategy()
+              .allowsToPlay(player, itemView.getParent())) {
+            listener.getManager().setPlayer(player);
+            listener.getManager().restoreVideoState(player.getMediaId());
+            listener.getManager().startPlayback();
+          }
+        }
+        handled = true;
+        break;
+      case MSG_DETACHED:
+        listener = itemView.getParent() != null ?  //
+            Toro.sInstance.mListeners.get(itemView.getParent().hashCode()) : null;
+        // Manually save Video state
+        if (listener != null && player.equals(listener.getManager().getPlayer())) {
+          if (player.isPlaying()) {
+            listener.getManager().saveVideoState( //
+                player.getMediaId(), player.getCurrentPosition(), player.getDuration());
+            listener.getManager().pausePlayback();
+          }
+          // Detach current Player
+          listener.getManager().setPlayer(null);
+        }
+        // Release player.
+        player.releasePlayer();
+        handled = true;
+        break;
+      default:
+        handled = false;
+        break;
+    }
+
+    return handled;
   }
 }

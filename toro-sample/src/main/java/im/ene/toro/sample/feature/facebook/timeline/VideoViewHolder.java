@@ -24,7 +24,6 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
-import com.squareup.picasso.Picasso;
 import im.ene.toro.exoplayer2.ExoVideoView;
 import im.ene.toro.exoplayer2.ExoVideoViewHolder;
 import im.ene.toro.sample.R;
@@ -46,6 +45,8 @@ public class VideoViewHolder extends ExoVideoViewHolder {
     super(itemView);
     mThumbnail = (ImageView) itemView.findViewById(R.id.thumbnail);
     mInfo = (TextView) itemView.findViewById(R.id.info);
+    // tricky
+    this.videoView.setAspectRatio(16.f / 9);
   }
 
   @Override protected ExoVideoView findVideoView(View itemView) {
@@ -84,11 +85,11 @@ public class VideoViewHolder extends ExoVideoViewHolder {
 
   @Override public void onViewHolderBound() {
     super.onViewHolderBound();
-    Picasso.with(itemView.getContext())
-        .load(R.drawable.toro_place_holder)
-        .fit()
-        .centerInside()
-        .into(mThumbnail);
+    //Picasso.with(itemView.getContext())
+    //    .load(R.drawable.toro_place_holder)
+    //    .fit()
+    //    .centerInside()
+    //    .into(mThumbnail);
     mInfo.setText("Bound");
   }
 

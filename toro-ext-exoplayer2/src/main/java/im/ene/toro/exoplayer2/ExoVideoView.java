@@ -235,7 +235,7 @@ public class ExoVideoView extends FrameLayout {
    *
    * @param widthHeightRatio The width to height ratio.
    */
-  private void setAspectRatio(float widthHeightRatio) {
+  public void setAspectRatio(float widthHeightRatio) {
     if (this.videoAspectRatio != widthHeightRatio) {
       this.videoAspectRatio = widthHeightRatio;
       requestLayout();
